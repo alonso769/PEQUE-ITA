@@ -37,13 +37,21 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 
 /* ============ FACHADA ============ */
 #v-fachada svg{position:absolute;inset:0;width:100%;height:100%}
+/* Escenario: video y zonas de pisos comparten el mismo tamaño, así siempre quedan alineados */
 #v-fachada{container-type:size}
 .stage{position:absolute;left:50%;top:50%;width:max(100cqw,calc(100cqh*1376/768));height:max(100cqh,calc(100cqw*768/1376));transform:translate(-50%,-50%)}
-#facVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;background:#1b1f2a}
-.dayctl{position:absolute;right:24px;bottom:24px;z-index:7;display:flex;align-items:center;gap:10px;padding:5px 16px 5px 5px;font-size:15px}
-.dayctl input{width:190px;accent-color:var(--accent);cursor:pointer}
-.dayctl #dayLbl{min-width:78px;color:var(--text)}
-.dayctl #dayPlay{width:36px;height:36px;justify-content:center;padding:0;font-size:12px}
+.stage{background:#1b1f2a}
+.dayimg{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;will-change:opacity}
+#imgNoche{opacity:0}
+.dayvid{opacity:0;transition:opacity .45s ease;pointer-events:none}
+.dayvid.on{opacity:1}
+.dayvid.out{transition-duration:.9s}
+/* Control "Hora del día" */
+.dayctl{position:absolute;right:24px;bottom:24px;z-index:7;display:flex;align-items:center;gap:2px;padding:4px}
+.dayctl button{padding:10px 18px;font-size:14px}
+.dayctl button.on{background:#f4f1ec;color:#111}
+.dayctl button:disabled{cursor:wait}
+.dayctl button.cargando{opacity:.6}
 .hero-title{position:absolute;left:clamp(20px,5vw,72px);top:50%;transform:translateY(-50%);z-index:5;pointer-events:none;max-width:40vw}
 .hero-title h1{font-family:"Instrument Serif";font-weight:400;font-size:clamp(46px,7.4vw,118px);line-height:.9;letter-spacing:-.01em;text-shadow:0 4px 40px rgba(0,0,0,.35)}
 .hero-title h1 i{color:#ffd9bf}
@@ -152,8 +160,7 @@ body.ficha-on #plantaWrap{left:384px}
   #plantaWrap svg{width:880px;height:auto;flex:none}
   .plan-head .mono::after{content:" · desliza →"}
   .hint{font-size:12px;gap:10px;bottom:16px}
-    .dayctl{left:12px;right:12px;bottom:66px;gap:8px}
-  .dayctl input{flex:1;width:auto}
+  .dayctl{left:50%;right:auto;transform:translateX(-50%);bottom:66px}
   #plantaWrap{inset:130px 74px 120px 6px}
   .plan-head{top:76px;left:16px}
   #floorRail{right:8px;width:56px;top:130px;bottom:120px}
@@ -181,8 +188,11 @@ body.ficha-on #plantaWrap{left:384px}
 
 <!-- ============ VISTA 1: FACHADA ============ -->
 <section class="view on" id="v-fachada">
-    <div class="stage">
-  <video id="facVideo" src="img/fachada-video.mp4" poster="img/fachada-manana.jpg" muted playsinline preload="auto"></video>
+  <div class="stage">
+  <img class="dayimg" id="imgManana" src="img/fachada-manana.jpg" alt="Edificio Estudio Pequeñita">
+  <img class="dayimg" id="imgNoche"  src="img/fachada-noche.jpg"  alt="">
+  <video class="dayimg dayvid" id="vNoche" src="img/dia-a-noche.mp4" muted playsinline preload="auto"></video>
+  <video class="dayimg dayvid" id="vDia"   src="img/noche-a-dia.mp4" muted playsinline preload="metadata"></video>
   <svg id="facSvg" viewBox="0 0 1376 768" preserveAspectRatio="xMidYMid slice">
     <defs>
       <linearGradient id="floorGrad" x1="0" x2="1">
@@ -192,23 +202,19 @@ body.ficha-on #plantaWrap{left:384px}
       </linearGradient>
       <linearGradient id="shade" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity=".55"/><stop offset=".45" stop-color="#000" stop-opacity="0"/></linearGradient>
     </defs>
-
     <rect width="1376" height="768" fill="url(#shade)" pointer-events="none"/>
     <g id="floorsG"></g>
   </svg>
-    </div>
+  </div>
   <div class="hero-title">
     <div class="mono" style="color:#f3e3d6">Departamentos · Lima</div>
     <h1>Estudio<br><i>Pequeñita</i></h1>
     <p>14 pisos de departamentos de 1 y 2 dormitorios. Elige un piso para ver qué hay disponible.</p>
   </div>
   <div id="floorCard" class="glass"></div>
-    <div class="dayctl glass" id="dayCtl">
-    <button class="chip" id="dayPlay" aria-label="Pausar">❚❚</button>
-    <span>☀️</span>
-    <input type="range" id="dayRange" min="0" max="1000" value="0" aria-label="Hora del día">
-    <span>🌙</span>
-    <span class="mono" id="dayLbl">Mañana</span>
+  <div class="dayctl glass" id="dayCtl" role="group" aria-label="Ver de día o de noche">
+    <button class="chip on" data-modo="dia">☀️ Día</button>
+    <button class="chip" data-modo="noche">🌙 Noche</button>
   </div>
   <div class="hint glass"><span class="pulse"></span><span id="hintTxt">Pasa el cursor sobre un piso y haz clic</span><span class="mono" id="hintStock" style="letter-spacing:.08em"></span></div>
 </section>
@@ -359,32 +365,36 @@ const totalDisp=Object.values(DEPAS).filter(d=>d.estado==="disponible").length;
 $("#hintStock").textContent=`${totalDisp} disponibles`;
 if(matchMedia("(hover:none)").matches) $("#hintTxt").textContent="Toca un piso para ver sus departamentos";
 
-/* ===== 4b. HORA DEL DÍA (video controlado con la barra) ===== */
-const vid=$("#facVideo"), rng=$("#dayRange"), dayLbl=$("#dayLbl"), dayPlay=$("#dayPlay");
-const ETAPAS=[[0,"Mañana"],[.3,"Tarde"],[.5,"Atardecer"],[.72,"Noche"]];
-const CICLO=9000, PAUSA=1800;
-let dia=0, dir=1, auto=true, pausaHasta=0, ultimo=0, pendiente=null;
-function irA(t){ if(vid.seeking) pendiente=t; else vid.currentTime=t; }
-vid.addEventListener("seeked",()=>{ if(pendiente!==null){ const t=pendiente; pendiente=null; vid.currentTime=t; } });
-function ponerDia(f){
-  dia=Math.min(1,Math.max(0,f)); rng.value=Math.round(dia*1000);
-  dayLbl.textContent=ETAPAS.filter(e=>e[0]<=dia).pop()[1];
-  if(vid.duration) irA(dia*(vid.duration-0.05));
+/* =====================================================================
+   4b. DÍA / NOCHE — la foto queda quieta; al presionar un botón se
+   reproduce el video del cambio de luz y al final vuelve la foto nítida
+   ===================================================================== */
+const imgNoche=$("#imgNoche"), vNoche=$("#vNoche"), vDia=$("#vDia");
+const VELOCIDAD=1.3;               // 1 = velocidad normal del video; más alto = más rápido
+let modo="dia", animando=false;
+function marcarBotones(m){ document.querySelectorAll("#dayCtl button").forEach(b=>b.classList.toggle("on",b.dataset.modo===m)); }
+function listo(v){ return v.readyState>=3 ? Promise.resolve() : new Promise(r=>v.addEventListener("canplay",r,{once:true})); }
+async function cambiarModo(m){
+  if(m===modo || animando) return;
+  animando=true; marcarBotones(m);
+  const btns=document.querySelectorAll("#dayCtl button"); btns.forEach(b=>b.disabled=true);
+  const v = m==="noche" ? vNoche : vDia;
+  const btn=document.querySelector(`#dayCtl [data-modo="${m}"]`);
+  if(v.preload!=="auto"){ v.preload="auto"; v.load(); }
+  btn.classList.add("cargando"); await listo(v); btn.classList.remove("cargando");
+  v.currentTime=0; v.playbackRate=VELOCIDAD;
+  try{
+    await v.play();
+    v.classList.remove("out"); v.classList.add("on");                 // aparece el video sobre la foto
+    await new Promise(r=>v.addEventListener("ended",r,{once:true}));
+  }catch(e){ /* si el navegador no deja reproducir, solo cambia la foto */ }
+  imgNoche.style.opacity = m==="noche" ? 1 : 0;                      // debajo ya está la foto final en alta calidad
+  v.classList.add("out"); v.classList.remove("on");                  // el video se desvanece y queda la foto nítida
+  setTimeout(()=>{ v.pause(); v.currentTime=0; }, 950);
+  modo=m; animando=false; btns.forEach(b=>b.disabled=false);
+  if(m==="noche" && vDia.preload!=="auto"){ vDia.preload="auto"; vDia.load(); }   // deja listo el regreso al día
 }
-function animarDia(t){
-  const dt=ultimo? t-ultimo : 0; ultimo=t;
-  if(auto && t>pausaHasta && $("#v-fachada").classList.contains("on")){
-    let f=dia+dir*dt/CICLO;
-    if(f>=1||f<=0){ dir*=-1; pausaHasta=t+PAUSA; }
-    ponerDia(f);
-  }
-  requestAnimationFrame(animarDia);
-}
-function setAuto(on){ auto=on; dayPlay.textContent=on?"❚❚":"▶"; }
-rng.addEventListener("input",()=>{ setAuto(false); ponerDia(rng.value/1000); });
-dayPlay.onclick=()=>setAuto(!auto);
-vid.addEventListener("loadeddata",()=>{ const p=vid.play(); if(p) p.then(()=>vid.pause()).catch(()=>{}); ponerDia(dia); },{once:true});
-requestAnimationFrame(animarDia);
+document.querySelectorAll("#dayCtl button").forEach(b=>b.onclick=()=>cambiarModo(b.dataset.modo));
 
 /* =====================================================================
    5. PLANTA INTERACTIVA
