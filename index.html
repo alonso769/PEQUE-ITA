@@ -46,6 +46,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .dayvid{opacity:0;transition:opacity .45s ease;pointer-events:none}
 .dayvid.on{opacity:1}
 .dayvid.out{transition-duration:.9s}
+
 /* Control "Hora del día" */
 .dayctl{position:absolute;right:24px;bottom:24px;z-index:7;display:flex;align-items:center;gap:2px;padding:4px}
 .dayctl button{padding:10px 18px;font-size:14px}
@@ -151,10 +152,8 @@ body.ficha-on #plantaWrap{left:384px}
 /* ============ RESPONSIVE ============ */
 @media (max-width:760px){
   .brand b{display:none}
-  .hero-title{top:96px;transform:none;max-width:none;right:20px}
   .hero-title p{display:none}
   .hero-title h1{text-shadow:0 2px 24px rgba(0,0,0,.7)}
-  #v-fachada::after{content:"";position:absolute;inset:0 0 auto 0;height:260px;background:linear-gradient(rgba(0,0,0,.55),transparent);pointer-events:none}
   body.ficha-on #plantaWrap{left:6px}
   #plantaWrap{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;display:flex;align-items:center}
   #plantaWrap svg{width:880px;height:auto;flex:none}
@@ -173,6 +172,26 @@ body.ficha-on #plantaWrap{left:384px}
   .gal-nav{display:none}
   .gal-thumbs button{width:64px;height:42px}
 }
+/* ===== CELULAR Y TABLET EN VERTICAL: se ve el edificio completo ===== */
+@media (orientation:portrait){
+  /* fondo: la misma foto, desenfocada, para rellenar el cielo arriba y abajo */
+  #v-fachada::before{content:"";position:absolute;inset:-40px;background:url(img/fachada-manana.jpg) center/cover;filter:blur(28px) saturate(1.1);transition:opacity 1s;z-index:0}
+  #v-fachada::after{content:"";position:absolute;inset:-40px;background:url(img/fachada-noche.jpg) center/cover;filter:blur(28px);opacity:0;transition:opacity 1s;z-index:0}
+  #v-fachada[data-modo="noche"]::after{opacity:1}
+  /* el escenario se ajusta al ancho del edificio (no a la altura de la pantalla) */
+  .stage{width:min(calc(100cqw*1376/500),calc(100cqh*.92*1376/768));height:min(calc(100cqw*768/500),calc(100cqh*.92));top:57%;z-index:1;
+         -webkit-mask-image:linear-gradient(transparent 0,#000 7%,#000 93%,transparent);mask-image:linear-gradient(transparent 0,#000 7%,#000 93%,transparent)}
+  .hero-title,.dayctl,.hint,#floorCard{z-index:5}
+  .hero-title{top:84px;left:20px;right:20px;transform:none;max-width:none;text-align:center}
+  .hero-title h1{font-size:clamp(40px,11vw,64px);line-height:.95}
+  .hero-title h1 br{display:none}
+  .hero-title h1 i{margin-left:.2em}
+  .hero-title p{display:none}
+  #floorCard{display:none}
+  .dayctl{left:50%;right:auto;transform:translateX(-50%);bottom:66px}
+}
+.dayctl button{white-space:nowrap}
+@media (max-width:400px){ #hintStock{display:none} .hint{max-width:calc(100% - 24px)} }
 </style>
 </head>
 <body>
@@ -388,7 +407,8 @@ async function cambiarModo(m){
     v.classList.remove("out"); v.classList.add("on");                 // aparece el video sobre la foto
     await new Promise(r=>v.addEventListener("ended",r,{once:true}));
   }catch(e){ /* si el navegador no deja reproducir, solo cambia la foto */ }
-  imgNoche.style.opacity = m==="noche" ? 1 : 0;                      // debajo ya está la foto final en alta calidad
+  $("#v-fachada").dataset.modo=m;                                    // fondo desenfocado del celular
+  imgNoche.style.opacity = m==="noche" ? 1 : 0;                   // debajo ya está la foto final en alta calidad
   v.classList.add("out"); v.classList.remove("on");                  // el video se desvanece y queda la foto nítida
   setTimeout(()=>{ v.pause(); v.currentTime=0; }, 950);
   modo=m; animando=false; btns.forEach(b=>b.disabled=false);
@@ -474,10 +494,12 @@ function abrirTour(d){
   $("#tourLoader").classList.remove("off"); $("#dragHint").style.opacity=1;
   show("v-tour");
   const scenes={};
+  // campo de visión máximo para que lo visible en vertical no supere la altura de la panorámica
+  const hMax=2*Math.atan(Math.tan(56*Math.PI/180)*innerWidth/innerHeight)*180/Math.PI;
   T.tour.forEach(([id,nombre,img])=>scenes[id]={
     type:"equirectangular", panorama:img, title:nombre,
     haov:360, vaov:118, minPitch:-59, maxPitch:59,
-    hfov:110, minHfov:75, maxHfov:120, yaw:0, pitch:0
+    hfov:Math.min(110,hMax), minHfov:Math.min(75,hMax*.6), maxHfov:Math.min(120,hMax), yaw:0, pitch:0
   });
   if(viewer){ viewer.destroy(); viewer=null; }
   viewer=pannellum.viewer("pano",{
