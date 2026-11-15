@@ -37,6 +37,13 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 
 /* ============ FACHADA ============ */
 #v-fachada svg{position:absolute;inset:0;width:100%;height:100%}
+#v-fachada{container-type:size}
+.stage{position:absolute;left:50%;top:50%;width:max(100cqw,calc(100cqh*1376/768));height:max(100cqh,calc(100cqw*768/1376));transform:translate(-50%,-50%)}
+#facVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;background:#1b1f2a}
+.dayctl{position:absolute;right:24px;bottom:24px;z-index:7;display:flex;align-items:center;gap:10px;padding:5px 16px 5px 5px;font-size:15px}
+.dayctl input{width:190px;accent-color:var(--accent);cursor:pointer}
+.dayctl #dayLbl{min-width:78px;color:var(--text)}
+.dayctl #dayPlay{width:36px;height:36px;justify-content:center;padding:0;font-size:12px}
 .hero-title{position:absolute;left:clamp(20px,5vw,72px);top:50%;transform:translateY(-50%);z-index:5;pointer-events:none;max-width:40vw}
 .hero-title h1{font-family:"Instrument Serif";font-weight:400;font-size:clamp(46px,7.4vw,118px);line-height:.9;letter-spacing:-.01em;text-shadow:0 4px 40px rgba(0,0,0,.35)}
 .hero-title h1 i{color:#ffd9bf}
