@@ -421,7 +421,7 @@ function abrirTour(d){
   T.tour.forEach(([id,nombre,img])=>scenes[id]={
     type:"equirectangular", panorama:img, title:nombre,
     haov:360, vaov:118, minPitch:-59, maxPitch:59,
-    hfov:100, minHfov:55, maxHfov:110, yaw:0, pitch:0
+    hfov:110, minHfov:75, maxHfov:120, yaw:0, pitch:0
   });
   if(viewer){ viewer.destroy(); viewer=null; }
   viewer=pannellum.viewer("pano",{
